@@ -10,11 +10,17 @@ void Router::del(const Route &route) {
 
 http::Response Router::handle(const http::Request &req) {
     // handle the request finding the right route
-    auto match = [&req](const Route &r){ //match condition to find the right route
+    // split uri from query string
+    std::string uri(req.uri);
+    size_t i = req.uri.find_first_of('?');
+    if ((i != std::string::npos) && (i > 0)) {
+        uri = uri.substr(0,i);
+    }
+    auto match = [&req, uri](const Route &r){ //match condition to find the right route
         std::smatch m;
         std::regex rgx(r.uri.data());
         return ((req.method == r.method) &&
-                (std::regex_match(req.uri.begin(), req.uri.end(), m, rgx)));
+                (std::regex_match(uri.begin(), uri.end(), m, rgx)));
     };
     std::set<Route>::iterator result = std::ranges::find_if(this->routes, match);
     if (result != this->routes.end()) {

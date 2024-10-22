@@ -13,14 +13,18 @@ Features:
 - Server multi-threaded
 - single file header to include
 - very easy and fast
+- designed to exchange json messages
 
 ## Server example
 
 ```c++
 //handle /test/<int> endpoint
 http::Response handle_test(const http::Request &req) {
-    // here you can manually parse the request, including parameters
+    // here you can parse the request, including parameters
     cout << "Requested uri: " << req.uri << endl;
+    for (const auto& p : const_cast<http::Request&>(req).getParams()) {
+        std::cout << "key '" << p.first << "' has value '" << p.second << "'" << std::endl;
+    }
     // generate response
     map<string,string> headers;
     string body = "{\"status\": \"OK\"}";
@@ -29,25 +33,25 @@ http::Response handle_test(const http::Request &req) {
 }
 
 void main() {
-    NiceHTTP mhttp;
+    NiceHTTP nhttp;
     // Route supports regex
     Route r {"GET", "/test/[0-9]", handle_test, "apptoken123"};
-    mhttp.getRouter().add(r);
-    mhttp.start("127.0.0.1", 8090);
+    nhttp.getRouter().add(r);
+    nhttp.start("127.0.0.1", 8090);
 }
 ```
 
 ## Client example
 ```c++
 void main() {
-    NiceHTTP mhttp;
+    NiceHTTP nhttp;
     map<string,string> headers;
-    //Add app auth token
+    // Add auth app token
     headers.insert({"Authorization", "apptoken123"});
-    http::Request req {"GET", "/test/2", PROTO_HTTP1, headers, false, 0, ""};
+    http::Request req {"GET", "/test/2?id=45&user=admin", PROTO_HTTP1, headers, false, 0, ""};
     http::Response r;
-    r = mhttp.request(req, "localhost", 8090);
-    cout << r.toString(false) << endl; //print raw response
+    r = nhttp.request(req, "localhost", 8090);
+    cout << r.toString(false) << endl;
 }
 ```
 

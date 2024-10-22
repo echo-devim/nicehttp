@@ -383,6 +383,7 @@ public:
     Request(const Request& hr);
     std::string toString(bool carriage_return = true);
     Request& operator=(const Request& other);
+    std::map<std::string,std::string> getParams(); // get uri params as map
 };
 
 class Response : public Message {
@@ -518,12 +519,35 @@ void http::Message::parseHeaders(const std::string& headerstr) {
         if (key == "content-length") {
             //The request has a payload
             this->content_length = strtoul(std::string(val).c_str(), nullptr, 0);
-        } else if (( key == "content-type") && (val == "application/json")) {
-            this->is_json = true;
+        } else if (key == "content-type") {
+            if (val == "application/json") {
+                this->is_json = true;
+            } else {
+                this->is_json = false;
+                std::cout << "WARNING: Received unsupported content-type " << val << std::endl;
+            }
         } else {
             this->headers.insert({key, val});
         }
     }
+}
+
+std::map<std::string,std::string> http::Request::getParams() {
+    std::map<std::string,std::string> resp;
+    size_t i = this->uri.find_first_of('?');
+    if ((i != std::string::npos) && (i < this->uri.length())) {
+        std::string query(this->uri.substr(i+1));
+        for (const auto params : std::views::split(query, '&')) {
+            std::string_view pair(params);
+            i = pair.find('=');
+            if ((i != std::string::npos) && (i!=0)) {
+                std::string key(pair.substr(0,i));
+                std::string val(pair.substr(i+1));
+                resp.insert({key, val});
+            }
+        }
+    }
+    return resp;
 }
 
 http::Request::Request(std::string method, std::string uri, std::string proto, std::map<std::string,std::string> headers, bool is_json, size_t content_length, std::string body) {
@@ -982,11 +1006,17 @@ void Router::del(const Route &route) {
 
 http::Response Router::handle(const http::Request &req) {
     // handle the request finding the right route
-    auto match = [&req](const Route &r){ //match condition to find the right route
+    // split uri from query string
+    std::string uri(req.uri);
+    size_t i = req.uri.find_first_of('?');
+    if ((i != std::string::npos) && (i > 0)) {
+        uri = uri.substr(0,i);
+    }
+    auto match = [&req, uri](const Route &r){ //match condition to find the right route
         std::smatch m;
         std::regex rgx(r.uri.data());
         return ((req.method == r.method) &&
-                (std::regex_match(req.uri.begin(), req.uri.end(), m, rgx)));
+                (std::regex_match(uri.begin(), uri.end(), m, rgx)));
     };
     std::set<Route>::iterator result = std::ranges::find_if(this->routes, match);
     if (result != this->routes.end()) {

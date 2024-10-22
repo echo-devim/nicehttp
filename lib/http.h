@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <iostream>
 #include <algorithm>
+#include <variant>
 #define PROTO_HTTP1 "HTTP/1.1"
 
 namespace http {
@@ -54,6 +55,7 @@ public:
     Request(const Request& hr);
     std::string toString(bool carriage_return = true);
     Request& operator=(const Request& other);
+    std::map<std::string,std::string> getParams(); // get uri params as map
 };
 
 class Response : public Message {
